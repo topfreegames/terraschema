@@ -22,8 +22,6 @@ type CreateSchemaOptions struct {
 }
 
 func CreateSchema(path string, options CreateSchemaOptions) (map[string]any, error) {
-	schemaOut := make(map[string]any)
-
 	varMap, err := reader.GetVarMap(path, options.DebugOut)
 	if err != nil {
 		if options.AllowEmpty && (errors.Is(err, reader.ErrFilesNotFound) || errors.Is(err, reader.ErrNoVariablesFound)) {
@@ -31,11 +29,37 @@ func CreateSchema(path string, options CreateSchemaOptions) (map[string]any, err
 				fmt.Printf("Warning: directory %q: %v, creating empty schema file\n", path, err)
 			}
 
-			return schemaOut, nil
+			return make(map[string]any), nil
 		} else {
-			return schemaOut, fmt.Errorf("error reading tf files at %q: %w", path, err)
+			return nil, fmt.Errorf("error reading tf files at %q: %w", path, err)
 		}
 	}
+
+	return createSchemaFromVarMap(varMap, options)
+}
+
+// CreateSchemaFromBytes creates a JSON schema from HCL content provided as a map of file names to their byte contents.
+// This overload allows processing HCL content without reading from the filesystem.
+func CreateSchemaFromBytes(files map[string][]byte, options CreateSchemaOptions) (map[string]any, error) {
+	varMap, err := reader.GetVarMapFromBytes(files, options.DebugOut)
+	if err != nil {
+		if options.AllowEmpty && (errors.Is(err, reader.ErrFilesNotFound) || errors.Is(err, reader.ErrNoVariablesFound)) {
+			if !options.SuppressLogging {
+				fmt.Printf("Warning: no variables found in provided files: %v, creating empty schema file\n", err)
+			}
+
+			return make(map[string]any), nil
+		} else {
+			return nil, fmt.Errorf("error reading tf files from memory: %w", err)
+		}
+	}
+
+	return createSchemaFromVarMap(varMap, options)
+}
+
+// createSchemaFromVarMap contains the common logic for creating a JSON schema from a variable map
+func createSchemaFromVarMap(varMap map[string]model.TranslatedVariable, options CreateSchemaOptions) (map[string]any, error) {
+	schemaOut := make(map[string]any)
 
 	schemaOut["$schema"] = "http://json-schema.org/draft-07/schema#"
 	schemaOut["type"] = "object"

@@ -3,6 +3,7 @@ package reader
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
@@ -45,15 +46,48 @@ func GetVarMap(path string, debugOut bool) (map[string]model.TranslatedVariable,
 		fmt.Printf("Debug: found the following files in %q:\n", path)
 	}
 
-	parser := hclparse.NewParser()
+	fileContents := make(map[string][]byte)
 
-	varMap := make(map[string]model.TranslatedVariable)
 	for _, fileName := range files {
 		if debugOut {
 			fmt.Printf("\t%q, with variable(s):\n", fileName)
 		}
 
-		file, d := parser.ParseHCLFile(fileName)
+		content, err := os.ReadFile(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("error reading file %q: %w", fileName, err)
+		}
+		fileContents[fileName] = content
+	}
+
+	return getVarMapFromFiles(fileContents, debugOut)
+}
+
+// GetVarMapFromBytes reads HCL content from a map of file names to their byte contents and returns a map of variable names to their translated values.
+// This overload allows processing HCL content without reading from the filesystem.
+func GetVarMapFromBytes(files map[string][]byte, debugOut bool) (map[string]model.TranslatedVariable, error) {
+	if len(files) == 0 {
+		return nil, ErrFilesNotFound
+	}
+
+	if debugOut {
+		fmt.Printf("Debug: processing %d files from memory:\n", len(files))
+	}
+
+	return getVarMapFromFiles(files, debugOut)
+}
+
+// getVarMapFromFiles contains the common logic for creating a variable map from file contents
+func getVarMapFromFiles(files map[string][]byte, debugOut bool) (map[string]model.TranslatedVariable, error) {
+	parser := hclparse.NewParser()
+
+	varMap := make(map[string]model.TranslatedVariable)
+	for fileName, content := range files {
+		if debugOut {
+			fmt.Printf("\t%q, with variable(s):\n", fileName)
+		}
+
+		file, d := parser.ParseHCL(content, fileName)
 		if d.HasErrors() {
 			return nil, d
 		}
