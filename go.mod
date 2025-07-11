@@ -1,4 +1,4 @@
-module github.com/HewlettPackard/terraschema
+module github.com/topfreegames/terraschema
 
 go 1.24.0
 
