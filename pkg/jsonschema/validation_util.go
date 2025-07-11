@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty/gocty"
 
-	"github.com/HewlettPackard/terraschema/pkg/reader"
+	"github.com/topfreegames/terraschema/pkg/reader"
 )
 
 func isExpressionVarName(ex hcl.Expression, name string) bool {

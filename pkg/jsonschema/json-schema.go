@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/HewlettPackard/terraschema/pkg/model"
-	"github.com/HewlettPackard/terraschema/pkg/reader"
+	"github.com/topfreegames/terraschema/pkg/model"
+	"github.com/topfreegames/terraschema/pkg/reader"
 )
 
 type CreateSchemaOptions struct {

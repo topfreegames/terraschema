@@ -2,7 +2,7 @@
 package main
 
 import (
-	"github.com/HewlettPackard/terraschema/cmd"
+	"github.com/topfreegames/terraschema/cmd"
 )
 
 func main() {

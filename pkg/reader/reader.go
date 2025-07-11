@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 
-	"github.com/HewlettPackard/terraschema/pkg/model"
+	"github.com/topfreegames/terraschema/pkg/model"
 )
 
 var fileSchema = &hcl.BodySchema{

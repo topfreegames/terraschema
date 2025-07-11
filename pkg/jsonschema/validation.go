@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/HewlettPackard/terraschema/pkg/reader"
+	"github.com/topfreegames/terraschema/pkg/reader"
 )
 
 type conditionMutator func(hcl.Expression, string, string) (map[string]any, error)
