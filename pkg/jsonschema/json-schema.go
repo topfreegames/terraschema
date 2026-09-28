@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/hashicorp/hcl/v2"
+
 	"github.com/topfreegames/terraschema/pkg/model"
 	"github.com/topfreegames/terraschema/pkg/reader"
 )
@@ -35,7 +37,12 @@ func CreateSchema(path string, options CreateSchemaOptions) (map[string]any, err
 		}
 	}
 
-	return createSchemaFromVarMap(varMap, options)
+	evalCtx, err := reader.GetStaticEvalContext(path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading locals at %q: %w", path, err)
+	}
+
+	return createSchemaFromVarMap(varMap, evalCtx, options)
 }
 
 // CreateSchemaFromBytes creates a JSON schema from HCL content provided as a map of file names to their byte contents.
@@ -54,11 +61,19 @@ func CreateSchemaFromBytes(files map[string][]byte, options CreateSchemaOptions)
 		}
 	}
 
-	return createSchemaFromVarMap(varMap, options)
+	evalCtx, err := reader.GetStaticEvalContextFromBytes(files)
+	if err != nil {
+		return nil, fmt.Errorf("error reading locals from memory: %w", err)
+	}
+
+	return createSchemaFromVarMap(varMap, evalCtx, options)
 }
 
-// createSchemaFromVarMap contains the common logic for creating a JSON schema from a variable map
-func createSchemaFromVarMap(varMap map[string]model.TranslatedVariable, options CreateSchemaOptions) (map[string]any, error) {
+// createSchemaFromVarMap contains the common logic for creating a JSON schema from a variable map. evalCtx holds
+// the module's static locals, which validation conditions may refer to.
+func createSchemaFromVarMap(varMap map[string]model.TranslatedVariable, evalCtx *hcl.EvalContext,
+	options CreateSchemaOptions,
+) (map[string]any, error) {
 	schemaOut := make(map[string]any)
 
 	schemaOut["$schema"] = "http://json-schema.org/draft-07/schema#"
@@ -77,7 +92,7 @@ func createSchemaFromVarMap(varMap map[string]model.TranslatedVariable, options 
 		if options.RequireAll {
 			requiredArray = append(requiredArray, name)
 		}
-		node, err := createNode(name, variable, options)
+		node, err := createNode(name, variable, evalCtx, options)
 		if err != nil {
 			return schemaOut, fmt.Errorf("error creating node for %q: %w", name, err)
 		}
@@ -99,7 +114,9 @@ func createSchemaFromVarMap(varMap map[string]model.TranslatedVariable, options 
 }
 
 //nolint:cyclop
-func createNode(name string, v model.TranslatedVariable, options CreateSchemaOptions) (map[string]any, error) {
+func createNode(name string, v model.TranslatedVariable, evalCtx *hcl.EvalContext,
+	options CreateSchemaOptions,
+) (map[string]any, error) {
 	tc, err := reader.GetTypeConstraint(v.Variable.Type)
 	if err != nil {
 		return nil, fmt.Errorf("getting type constraint for %q: %w", name, err)
@@ -127,7 +144,7 @@ func createNode(name string, v model.TranslatedVariable, options CreateSchemaOpt
 
 	// Apply all specified validation rules in the order specified in the HCL config.
 	for i, validation := range v.Variable.Validations {
-		err = parseConditionToNode(validation.Condition, v.ConditionsAsString[i], name, &node)
+		err = parseConditionToNode(validation.Condition, v.ConditionsAsString[i], name, evalCtx, &node)
 		// if an error occurs, log it and continue.
 		if err != nil && !options.SuppressLogging {
 			fmt.Printf("Warning: couldn't apply validation for %q with condition %q: %v\n",

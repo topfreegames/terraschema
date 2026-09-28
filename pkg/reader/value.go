@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
@@ -19,6 +20,11 @@ func ExpressionToJSONObject(in hcl.Expression) (any, error) {
 		return nil, d
 	}
 
+	return ValueToJSONObject(v)
+}
+
+// ValueToJSONObject converts a cty value to an `any` type so that can be marshaled to JSON later.
+func ValueToJSONObject(v cty.Value) (any, error) {
 	// convert the value to a simple JSON value, so that it can
 	// be reliably marshaled to JSON. Then, unmarshal it to an
 	// `any` type so that it can be passed around the code without

@@ -1,0 +1,97 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"additionalProperties": true,
+	"properties": {
+		"default_value": {
+			"anyOf": [
+				{
+					"title": "null",
+					"type": "null"
+				},
+				{
+					"title": "string",
+					"type": "string"
+				}
+			],
+			"default": "a",
+			"description": "A plain string",
+			"title": "default_value: Select a type"
+		},
+		"not_static": {
+			"anyOf": [
+				{
+					"title": "null",
+					"type": "null"
+				},
+				{
+					"title": "string",
+					"type": "string"
+				}
+			],
+			"default": "a",
+			"description": "Validated against a local that depends on a variable, so it gets no enum",
+			"title": "not_static: Select a type"
+		},
+		"prefixed_region": {
+			"anyOf": [
+				{
+					"title": "null",
+					"type": "null"
+				},
+				{
+					"title": "string",
+					"type": "string"
+				}
+			],
+			"default": "aws-us-east-1",
+			"description": "A value from a local built on another local",
+			"enum": [
+				"aws-us-east-1",
+				"aws-sa-east-1"
+			],
+			"title": "prefixed_region: Select a type"
+		},
+		"region": {
+			"anyOf": [
+				{
+					"title": "null",
+					"type": "null"
+				},
+				{
+					"title": "string",
+					"type": "string"
+				}
+			],
+			"description": "A region from local.regions",
+			"enum": [
+				"us-east-1",
+				"sa-east-1"
+			],
+			"title": "region: Select a type"
+		},
+		"tier": {
+			"anyOf": [
+				{
+					"title": "null",
+					"type": "null"
+				},
+				{
+					"title": "string",
+					"type": "string"
+				}
+			],
+			"default": "small",
+			"description": "A preset whose valid values are the keys of local.tiers",
+			"enum": [
+				"large",
+				"medium",
+				"small"
+			],
+			"title": "tier: Select a type"
+		}
+	},
+	"required": [
+		"region"
+	],
+	"type": "object"
+}

@@ -1,0 +1,47 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"additionalProperties": false,
+	"properties": {
+		"default_value": {
+			"default": "a",
+			"description": "A plain string",
+			"type": "string"
+		},
+		"not_static": {
+			"default": "a",
+			"description": "Validated against a local that depends on a variable, so it gets no enum",
+			"type": "string"
+		},
+		"prefixed_region": {
+			"default": "aws-us-east-1",
+			"description": "A value from a local built on another local",
+			"enum": [
+				"aws-us-east-1",
+				"aws-sa-east-1"
+			],
+			"type": "string"
+		},
+		"region": {
+			"description": "A region from local.regions",
+			"enum": [
+				"us-east-1",
+				"sa-east-1"
+			],
+			"type": "string"
+		},
+		"tier": {
+			"default": "small",
+			"description": "A preset whose valid values are the keys of local.tiers",
+			"enum": [
+				"large",
+				"medium",
+				"small"
+			],
+			"type": "string"
+		}
+	},
+	"required": [
+		"region"
+	],
+	"type": "object"
+}
