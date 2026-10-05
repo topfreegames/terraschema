@@ -25,6 +25,7 @@ func TestCreateSchema(t *testing.T) {
 		"complex-types",
 		"custom-validation",
 		"ignore-variables",
+		"static-locals",
 	}
 	for i := range testCases {
 		name := testCases[i]
@@ -50,6 +51,35 @@ func TestCreateSchema(t *testing.T) {
 				t.Errorf("Schema has incorrect value (-want,+got):\n%s", d)
 			}
 		})
+	}
+}
+
+func TestCreateSchemaFromBytes_StaticLocals(t *testing.T) {
+	t.Parallel()
+	tfPath := "../../test/modules/static-locals"
+
+	files := make(map[string][]byte)
+	for _, name := range []string{"locals.tf", "variables.tf"} {
+		content, err := os.ReadFile(filepath.Join(tfPath, name))
+		require.NoError(t, err)
+		files[name] = content
+	}
+
+	result, err := CreateSchemaFromBytes(files, CreateSchemaOptions{
+		AllowAdditionalProperties: true,
+		SuppressLogging:           true,
+	})
+	require.NoError(t, err)
+
+	expected, err := os.ReadFile("../../test/expected/static-locals/schema.json")
+	require.NoError(t, err)
+
+	var expectedMap map[string]any
+	err = json.Unmarshal(expected, &expectedMap)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expectedMap, result); d != "" {
+		t.Errorf("Schema has incorrect value (-want,+got):\n%s", d)
 	}
 }
 

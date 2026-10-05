@@ -18,7 +18,7 @@ type ValidationApplyError struct {
 	ErrorMap map[string]error
 }
 
-func parseConditionToNode(ex hcl.Expression, _ string, name string, m *map[string]any) error {
+func parseConditionToNode(ex hcl.Expression, _ string, name string, evalCtx *hcl.EvalContext, m *map[string]any) error {
 	if m == nil {
 		return fmt.Errorf("node is nil")
 	}
@@ -27,7 +27,9 @@ func parseConditionToNode(ex hcl.Expression, _ string, name string, m *map[strin
 		return fmt.Errorf("cannot apply validation, type is not defined for %v", *m)
 	}
 	functions := map[string]conditionMutator{
-		"contains([...],var.input_parameter)":          contains,
+		"contains([...],var.input_parameter)": func(ex hcl.Expression, name string, t string) (map[string]any, error) {
+			return contains(ex, name, t, evalCtx)
+		},
 		"var == \"a\" || var == \"b\"":                 isOneOf,
 		"a <>= (variable or variable length) (&& ...)": comparison,
 		"can(regex(\"...\",var.input_parameter))":      canRegex,
@@ -64,19 +66,19 @@ func isOneOf(ex hcl.Expression, name string, _ string) (map[string]any, error) {
 	return map[string]any{"enum": enum}, nil
 }
 
-func contains(ex hcl.Expression, name string, _ string) (map[string]any, error) {
+func contains(ex hcl.Expression, name string, _ string, evalCtx *hcl.EvalContext) (map[string]any, error) {
 	args, ok := argumentsOfCall(ex, "contains", 2)
 	if !ok {
 		return nil, fmt.Errorf("condition is not a 'contains()' function")
 	}
 
-	l, d := hcl.ExprList(args[0])
-	if d.HasErrors() {
-		return nil, fmt.Errorf("first argument is not a list")
-	}
-
 	if !isExpressionVarName(args[1], name) {
 		return nil, fmt.Errorf("second argument is not a direct reference to the input variable")
+	}
+
+	l, d := hcl.ExprList(args[0])
+	if d.HasErrors() {
+		return staticEnum(args[0], evalCtx)
 	}
 
 	newEnum := []any{}
@@ -89,6 +91,34 @@ func contains(ex hcl.Expression, name string, _ string) (map[string]any, error) 
 	}
 
 	return map[string]any{"enum": newEnum}, nil
+}
+
+// staticEnum turns a list the module can resolve from its own source, such as keys(local.tiers), into an
+// enum. Lists that depend on variables, resources or anything else known only at plan time are not translated.
+func staticEnum(ex hcl.Expression, evalCtx *hcl.EvalContext) (map[string]any, error) {
+	v, d := ex.Value(evalCtx)
+	if d.HasErrors() {
+		return nil, fmt.Errorf("first argument is not a list, nor does it evaluate statically: %w", d)
+	}
+
+	t := v.Type()
+	isList := t.IsListType() || t.IsSetType() || t.IsTupleType()
+	if v.IsNull() || !v.IsWhollyKnown() || !isList {
+		return nil, fmt.Errorf("first argument does not evaluate to a known list")
+	}
+	for it := v.ElementIterator(); it.Next(); {
+		_, element := it.Element()
+		if element.IsNull() || !element.Type().IsPrimitiveType() {
+			return nil, fmt.Errorf("first argument evaluates to a list with null or non-primitive values")
+		}
+	}
+
+	enum, err := reader.ValueToJSONObject(v)
+	if err != nil {
+		return nil, fmt.Errorf("list could not be converted to JSON: %w", err)
+	}
+
+	return map[string]any{"enum": enum}, nil
 }
 
 func comparison(ex hcl.Expression, name string, t string) (map[string]any, error) {
